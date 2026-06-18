@@ -1762,7 +1762,7 @@
   <div class="modal-box" style="max-width:800px">
     <h2>Manage Episodes — <span id="ep-anime-title"></span></h2>
     <p style="color:rgba(255,255,255,.5);font-size:13px;margin-bottom:16px">
-      Paste any video URL: YouTube, Vimeo, Google Drive, .mp4 link, or any embed URL.
+      Paste any video URL: YouTube, Google Drive, .mp4 link, or an AbyssPlayer URL (<code style="background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:4px;font-size:12px">https://abyssplayer.com/SHRh1cWSg</code>) — or just the raw video ID (<code style="background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:4px;font-size:12px">SHRh1cWSg</code>).
     </p>
 
     <div class="form-row" style="margin-bottom:20px">
@@ -2486,9 +2486,16 @@ async function watch(animeId, epIndex, selectedLang = ""){
 
   url = url.trim();
   let player = "";
-  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]+)/);
+  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)(\w[\w-]+)/);
   if(yt){
     player = `<iframe src="https://www.youtube.com/embed/${yt[1]}?autoplay=1" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+  }
+  else if(url.includes("abyssplayer.com")){
+    const abyssId = url.replace(/^https?:\/\/abyssplayer\.com\//, '').split('?')[0].trim();
+    player = `<iframe src="https://abyssplayer.com/${abyssId}" frameborder="0" scrolling="0" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+  }
+  else if(/^[A-Za-z0-9_-]{6,20}$/.test(url)){
+    player = `<iframe src="https://abyssplayer.com/${url}" frameborder="0" scrolling="0" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
   }
   else if(url.includes("drive.google.com")){
     const m = url.match(/\/d\/([^/]+)/);
