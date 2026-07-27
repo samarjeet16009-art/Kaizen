@@ -1,0 +1,38 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Default deny
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // Avatars
+    match /avatars/{userId} {
+      // Anyone can view avatars
+      allow read: if true;
+      // Users can only upload their own avatar, and it must be an image under 5MB
+      allow write: if request.auth != null 
+                   && request.auth.uid == userId
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    // Banners
+    match /banners/{userId} {
+      // Anyone can view banners
+      allow read: if true;
+      // Users can only upload their own banner, and it must be an image under 5MB
+      allow write: if request.auth != null 
+                   && request.auth.uid == userId
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+    
+    // Admins can manage all files (optional admin override for safety)
+    // Note: Firebase Storage Rules do not currently support direct querying of Firestore 
+    // to check the user's role. If admin override is needed, custom claims should be used 
+    // via Firebase Auth, or a Cloud Function should be implemented to handle deletion.
+    // Therefore, the above rules restrict write access strictly to the owner.
+  }
+}
