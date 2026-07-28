@@ -2973,12 +2973,13 @@ async function loadAnime(id){
           <div class="meta">Status: ${a.status||'?'} • Episodes: ${(a.episodes||[]).length}</div>
           
           ${a.addedByUid ? `
-          <div style="margin-top:20px; display:flex; align-items:center; gap:12px; cursor:pointer;" onclick="openUserProfile('${a.addedByUid}', '${(a.addedByName || 'System').replace(/'/g, "\\'")}')"
+          <div style="margin-top:20px; display:flex; align-items:center; gap:12px; cursor:pointer;"
+               onclick="openUserProfile('${a.addedByUid}', '${(a.addedByName || 'System').replace(/'/g, "\\'")}')"
                onmouseover="this.querySelector('.adby-pill').style.background='rgba(255,255,255,0.12)'" 
                onmouseout="this.querySelector('.adby-pill').style.background='rgba(255,255,255,0.06)'">
             <span style="font-size:13px; font-weight:600; color:rgba(255,255,255,0.55);">Added by:</span>
-            <div class="adby-pill" style="display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.06); padding:6px 16px 6px 6px; border-radius:100px; border:1px solid rgba(255,255,255,0.12); transition:background 0.2s;">
-              <img id="addedByAvatar-${a.id}" src="${PREDEFINED_AVATARS[0].url}" style="width:36px; height:36px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,0.15);">
+            <div class="adby-pill" style="display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.06); padding:5px 16px 5px 5px; border-radius:100px; border:1px solid rgba(255,255,255,0.12); transition:background 0.2s; line-height:1;">
+              <img id="addedByAvatar-${a.id}" src="${PREDEFINED_AVATARS[0].url}" style="width:34px; height:34px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,0.15); display:block; flex-shrink:0;">
               <span style="font-size:15px; font-weight:800; color:#fff; letter-spacing:0.3px;">${a.addedByName || 'System'}</span>
             </div>
           </div>
@@ -3199,8 +3200,8 @@ async function watch(animeId, epIndex, selectedLang = ""){
              onmouseover="this.querySelector('.adby-pill-w').style.background='rgba(255,255,255,0.12)'" 
              onmouseout="this.querySelector('.adby-pill-w').style.background='rgba(255,255,255,0.06)'">
           <span style="font-size:13px; font-weight:600; color:rgba(255,255,255,0.55);">Added by:</span>
-          <div class="adby-pill-w" style="display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.06); padding:6px 16px 6px 6px; border-radius:100px; border:1px solid rgba(255,255,255,0.12); transition:background 0.2s;">
-            <img id="watchAddedByAvatar-${a.id}" src="${PREDEFINED_AVATARS[0].url}" style="width:36px; height:36px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,0.15);">
+          <div class="adby-pill-w" style="display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.06); padding:5px 16px 5px 5px; border-radius:100px; border:1px solid rgba(255,255,255,0.12); transition:background 0.2s; line-height:1;">
+            <img id="watchAddedByAvatar-${a.id}" src="${PREDEFINED_AVATARS[0].url}" style="width:34px; height:34px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,0.15); display:block; flex-shrink:0;">
             <span style="font-size:15px; font-weight:800; color:#fff; letter-spacing:0.3px;">${a.addedByName || 'System'}</span>
           </div>
         </div>
