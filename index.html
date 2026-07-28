@@ -2973,11 +2973,13 @@ async function loadAnime(id){
           <div class="meta">Status: ${a.status||'?'} • Episodes: ${(a.episodes||[]).length}</div>
           
           ${a.addedByUid ? `
-          <div style="margin-top:20px; display:flex; align-items:center; gap:10px; cursor:pointer;" onclick="openUserProfile('${a.addedByUid}', '${(a.addedByName || 'System').replace(/'/g, "\\'")}')">
-            <span style="font-size:12px; color:rgba(255,255,255,0.6);">Added by:</span>
-            <div style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.05); padding:4px 12px 4px 4px; border-radius:100px; border:1px solid rgba(255,255,255,0.1); transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
-              <img id="addedByAvatar-${a.id}" src="${PREDEFINED_AVATARS[0].url}" style="width:24px; height:24px; border-radius:50%; object-fit:cover;">
-              <span style="font-size:13px; font-weight:700; color:#fff;">${a.addedByName || 'System'}</span>
+          <div style="margin-top:20px; display:flex; align-items:center; gap:12px; cursor:pointer;" onclick="openUserProfile('${a.addedByUid}', '${(a.addedByName || 'System').replace(/'/g, "\\'")}')"
+               onmouseover="this.querySelector('.adby-pill').style.background='rgba(255,255,255,0.12)'" 
+               onmouseout="this.querySelector('.adby-pill').style.background='rgba(255,255,255,0.06)'">
+            <span style="font-size:13px; font-weight:600; color:rgba(255,255,255,0.55);">Added by:</span>
+            <div class="adby-pill" style="display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.06); padding:6px 16px 6px 6px; border-radius:100px; border:1px solid rgba(255,255,255,0.12); transition:background 0.2s;">
+              <img id="addedByAvatar-${a.id}" src="${PREDEFINED_AVATARS[0].url}" style="width:36px; height:36px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,0.15);">
+              <span style="font-size:15px; font-weight:800; color:#fff; letter-spacing:0.3px;">${a.addedByName || 'System'}</span>
             </div>
           </div>
           ` : ''}
@@ -3019,11 +3021,13 @@ async function loadAnime(id){
 
   if (a.addedByUid) {
     db.collection("users").doc(a.addedByUid).get().then(doc => {
-      if (doc.exists && doc.data().avatar) {
+      if (doc.exists) {
+        // field is avatarUrl (not avatar)
+        const freshAvatar = doc.data().avatarUrl || doc.data().avatar || PREDEFINED_AVATARS[0].url;
         const el = document.getElementById(`addedByAvatar-${a.id}`);
-        if (el) el.src = doc.data().avatar;
+        if (el) el.src = freshAvatar;
       }
-    }).catch(err => console.error("Error fetching avatar:", err));
+    }).catch(err => console.error("Error fetching addedBy avatar:", err));
   }
 }
 
@@ -3190,11 +3194,14 @@ async function watch(animeId, epIndex, selectedLang = ""){
         <p style="font-size:13px; color:rgba(255,255,255,0.6); margin-bottom: 20px; line-height:1.5;">${a.description ? a.description.substring(0,250) + '...' : ''}</p>
         
         ${a.addedByUid ? `
-        <div style="margin-bottom:20px; display:flex; align-items:center; gap:10px; cursor:pointer;" onclick="openUserProfile('${a.addedByUid}', '${(a.addedByName || 'System').replace(/'/g, "\\'")}')">
-          <span style="font-size:12px; color:rgba(255,255,255,0.6);">Added by:</span>
-          <div style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.05); padding:4px 12px 4px 4px; border-radius:100px; border:1px solid rgba(255,255,255,0.1); transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
-            <img id="watchAddedByAvatar-${a.id}" src="${PREDEFINED_AVATARS[0].url}" style="width:24px; height:24px; border-radius:50%; object-fit:cover;">
-            <span style="font-size:13px; font-weight:700; color:#fff;">${a.addedByName || 'System'}</span>
+        <div style="margin-bottom:20px; display:flex; align-items:center; gap:12px; cursor:pointer;"
+             onclick="openUserProfile('${a.addedByUid}', '${(a.addedByName || 'System').replace(/'/g, "\\'")}')"
+             onmouseover="this.querySelector('.adby-pill-w').style.background='rgba(255,255,255,0.12)'" 
+             onmouseout="this.querySelector('.adby-pill-w').style.background='rgba(255,255,255,0.06)'">
+          <span style="font-size:13px; font-weight:600; color:rgba(255,255,255,0.55);">Added by:</span>
+          <div class="adby-pill-w" style="display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.06); padding:6px 16px 6px 6px; border-radius:100px; border:1px solid rgba(255,255,255,0.12); transition:background 0.2s;">
+            <img id="watchAddedByAvatar-${a.id}" src="${PREDEFINED_AVATARS[0].url}" style="width:36px; height:36px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,0.15);">
+            <span style="font-size:15px; font-weight:800; color:#fff; letter-spacing:0.3px;">${a.addedByName || 'System'}</span>
           </div>
         </div>
         ` : ''}
@@ -3232,11 +3239,13 @@ async function watch(animeId, epIndex, selectedLang = ""){
   
   if (a.addedByUid) {
     db.collection("users").doc(a.addedByUid).get().then(doc => {
-      if (doc.exists && doc.data().avatar) {
+      if (doc.exists) {
+        // field is avatarUrl (not avatar)
+        const freshAvatar = doc.data().avatarUrl || doc.data().avatar || PREDEFINED_AVATARS[0].url;
         const el = document.getElementById(`watchAddedByAvatar-${a.id}`);
-        if (el) el.src = doc.data().avatar;
+        if (el) el.src = freshAvatar;
       }
-    }).catch(err => console.error("Error fetching avatar:", err));
+    }).catch(err => console.error("Error fetching watchAddedBy avatar:", err));
   }
 
   setTimeout(() => {
