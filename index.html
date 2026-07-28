@@ -2454,6 +2454,24 @@
   </div>
 </div>
 
+<!-- NOTIFICATIONS CENTER MODAL -->
+<div class="modal" id="notificationsModal">
+  <div class="modal-box" style="max-width:500px">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:12px;">
+      <h2 style="margin:0; font-size:20px; font-weight:800; display:flex; align-items:center; gap:8px;">
+        🔔 Notifications
+      </h2>
+      <button class="uprofile-close" onclick="closeModal('notificationsModal')" style="position:static;">×</button>
+    </div>
+    <div id="notifications-list" style="max-height:360px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;">
+      <div style="padding:20px; text-align:center; color:rgba(255,255,255,0.4); font-size:13px;">Loading notifications...</div>
+    </div>
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="btn btn-ghost" onclick="closeModal('notificationsModal')" style="width:100%; justify-content:center;">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- SEARCH OVERLAY -->
 <div id="searchOverlay">
   <div style="max-width:800px; margin: 0 auto 20px auto; display: flex; align-items: center;">
@@ -5304,12 +5322,18 @@ function renderUserNav() {
           </div>
           <button class="user-dropdown-item" onclick="openProfileModal()">✏️ Edit Profile</button>
           <button class="user-dropdown-item" onclick="loadChat()">💬 Direct Messages</button>
+          <button class="user-dropdown-item" onclick="openNotificationsModal()" style="display:flex; align-items:center; justify-content:space-between;">
+            <span>🔔 Notifications</span>
+            <span id="nav-notif-badge" style="display:none; background:#ff5e7e; color:#fff; font-size:11px; font-weight:800; padding:2px 7px; border-radius:100px;">0</span>
+          </button>
           ${adminPanelBtn}
           ${modMgmtBtn}
           <button class="user-dropdown-item" onclick="signOutUser()">🚪 Sign Out</button>
         </div>
       </div>
     `;
+    fetchNotifications();
+
   } else {
     container.innerHTML = `
       <button class="btn btn-ghost sign-in-btn" style="padding:8px 16px;font-size:13px;border-radius:100px" onclick="openAuthModal()">Sign In</button>
@@ -6452,6 +6476,17 @@ async function toggleFriendship(targetUserId, currentIsFriend) {
       if (currentUserProfile) {
         currentUserProfile.friends = [...new Set([...(currentUserProfile.friends || []), targetUserId])];
       }
+
+      // Create notification for target user
+      db.collection("notifications").add({
+        targetUid: targetUserId,
+        senderUid: me.uid,
+        senderName: currentUserProfile ? currentUserProfile.username : (me.displayName || 'User'),
+        senderAvatar: currentUserProfile ? currentUserProfile.avatarUrl : PREDEFINED_AVATARS[0].url,
+        type: 'friend_request',
+        status: 'pending',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).catch(err => console.error("Error creating notification doc:", err));
     }
 
     openUserProfile(targetUserId);
@@ -6461,6 +6496,138 @@ async function toggleFriendship(targetUserId, currentIsFriend) {
     if (btn) btn.disabled = false;
   }
 }
+
+/* ======================================================
+   NOTIFICATION CENTER & FRIEND REQUEST MANAGEMENT
+   ====================================================== */
+function openNotificationsModal() {
+  const dropdown = document.getElementById("navUserDropdown");
+  if (dropdown) dropdown.classList.remove("show");
+  showModal("notificationsModal");
+  fetchNotifications();
+}
+
+async function fetchNotifications() {
+  const me = firebase.auth().currentUser;
+  if (!me) return;
+
+  const notifListEl = document.getElementById("notifications-list");
+  const badgeEl = document.getElementById("nav-notif-badge");
+
+  try {
+    // 1. Fetch pending notifications directed to me
+    const snap = await db.collection("notifications")
+      .where("targetUid", "==", me.uid)
+      .where("status", "==", "pending")
+      .get();
+
+    let notifs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // 2. Fallback: Check users collection for users who added me to their friends list, but I haven't added back
+    const myFriends = currentUserProfile ? (currentUserProfile.friends || []) : [];
+    const incomingReqSnap = await db.collection("users")
+      .where("friends", "array-contains", me.uid)
+      .get();
+
+    incomingReqSnap.docs.forEach(doc => {
+      const u = doc.data();
+      const senderUid = doc.id;
+      if (!myFriends.includes(senderUid) && !notifs.some(n => n.senderUid === senderUid)) {
+        notifs.push({
+          id: `fallback-${senderUid}`,
+          senderUid: senderUid,
+          senderName: u.username || 'User',
+          senderAvatar: u.avatarUrl || PREDEFINED_AVATARS[0].url,
+          type: 'friend_request',
+          status: 'pending'
+        });
+      }
+    });
+
+    // Update badge count in user dropdown menu
+    if (badgeEl) {
+      if (notifs.length > 0) {
+        badgeEl.textContent = notifs.length;
+        badgeEl.style.display = 'inline-block';
+      } else {
+        badgeEl.style.display = 'none';
+      }
+    }
+
+    if (!notifListEl) return;
+
+    if (notifs.length === 0) {
+      notifListEl.innerHTML = `<div style="padding:30px; text-align:center; color:rgba(255,255,255,0.4); font-size:13px;">No pending notifications</div>`;
+      return;
+    }
+
+    notifListEl.innerHTML = notifs.map(n => {
+      const isFallback = n.id.startsWith('fallback-');
+      const realNotifId = isFallback ? null : n.id;
+      return `
+        <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+          <div style="display:flex; align-items:center; gap:12px; cursor:pointer;" onclick="closeModal('notificationsModal'); openUserProfile('${n.senderUid}');">
+            <img src="${n.senderAvatar}" style="width:40px; height:40px; border-radius:50%; object-fit:cover; border:1px solid rgba(255,255,255,0.1);" onerror="this.src='${PREDEFINED_AVATARS[0].url}'" />
+            <div>
+              <div style="font-weight:700; font-size:14px; color:#fff;">${n.senderName}</div>
+              <div style="font-size:12px; color:rgba(255,255,255,0.5);">sent you a friend request</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-red" style="padding:6px 14px; font-size:12px; border-radius:8px;" onclick="acceptFriendRequest('${n.senderUid}', ${realNotifId ? `'${realNotifId}'` : 'null'})">Accept</button>
+            <button class="btn btn-ghost" style="padding:6px 12px; font-size:12px; border-radius:8px; color:rgba(255,255,255,0.6);" onclick="declineFriendRequest('${n.senderUid}', ${realNotifId ? `'${realNotifId}'` : 'null'})">Decline</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+  } catch (e) {
+    console.error("Error fetching notifications:", e);
+    if (notifListEl) {
+      notifListEl.innerHTML = `<div style="padding:20px; text-align:center; color:rgba(255,94,126,0.6); font-size:13px;">Error loading notifications.</div>`;
+    }
+  }
+}
+
+async function acceptFriendRequest(senderUid, notifId = null) {
+  const me = firebase.auth().currentUser;
+  if (!me) return;
+
+  try {
+    await db.collection("users").doc(me.uid).update({
+      friends: firebase.firestore.FieldValue.arrayUnion(senderUid)
+    });
+    if (currentUserProfile) {
+      currentUserProfile.friends = [...new Set([...(currentUserProfile.friends || []), senderUid])];
+    }
+    
+    if (notifId) {
+      await db.collection("notifications").doc(notifId).update({ status: 'accepted' });
+    }
+    
+    fetchNotifications();
+    renderUserNav();
+    alert("Friend request accepted! You are now friends 🤝");
+  } catch (e) {
+    console.error("Error accepting friend request:", e);
+    alert("Could not accept friend request: " + e.message);
+  }
+}
+
+async function declineFriendRequest(senderUid, notifId = null) {
+  const me = firebase.auth().currentUser;
+  if (!me) return;
+
+  try {
+    if (notifId) {
+      await db.collection("notifications").doc(notifId).delete();
+    }
+    fetchNotifications();
+  } catch (e) {
+    console.error("Error declining friend request:", e);
+  }
+}
+
 
 async function saveMyBio(uid) {
   const bioText = document.getElementById("my-profile-bio").value.trim();
