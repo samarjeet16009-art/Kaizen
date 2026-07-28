@@ -4160,8 +4160,8 @@ function renderChatSidebarList() {
       const timeStr = formatRelativeTime(c.lastMessageAt);
 
       return `
-        <div class="chat-list-item ${isCurrentlyActive ? 'active' : ''}" onclick="selectChat('${otherUid}', '${otherName.replace(/'/g, "\\'")}', '${avatarUrl.replace(/'/g, "\\'")}')">
-          <img class="chat-list-item-avatar" src="${avatarUrl}" onerror="this.src='${PREDEFINED_AVATARS[0].url}'" />
+        <div class="chat-list-item ${isCurrentlyActive ? 'active' : ''}" onclick="selectChat('${otherUid}', '${otherName.replace(/'/g, "\\'")}', activeChatAvatarCache['${otherUid}'] || '${avatarUrl.replace(/'/g, "\\'")}')">
+          <img class="chat-list-item-avatar" id="chatAvatar-${otherUid}" data-uid="${otherUid}" src="${avatarUrl}" onerror="this.src='${PREDEFINED_AVATARS[0].url}'" />
           <div class="chat-list-item-info">
             <div class="chat-list-item-name">${otherName}</div>
             <div class="chat-list-item-subtext">${lastMsg.substring(0, 30)}${lastMsg.length > 30 ? '...' : ''} <span style="font-size:9px;opacity:0.6;margin-left:5px;">${timeStr}</span></div>
@@ -4169,6 +4169,26 @@ function renderChatSidebarList() {
         </div>
       `;
     }).join('');
+
+    // Live-refresh avatars from users collection (fixes stale cached avatars in chat docs)
+    filtered.forEach(c => {
+      const otherUid = c.participants.find(uid => uid !== me.uid);
+      if (!otherUid) return;
+      db.collection("users").doc(otherUid).get().then(doc => {
+        if (doc.exists) {
+          const freshAvatar = doc.data().avatarUrl || PREDEFINED_AVATARS[0].url;
+          // Cache it for onclick
+          window.activeChatAvatarCache = window.activeChatAvatarCache || {};
+          window.activeChatAvatarCache[otherUid] = freshAvatar;
+          // Update the img in the list
+          const imgEl = document.getElementById(`chatAvatar-${otherUid}`);
+          if (imgEl) imgEl.src = freshAvatar;
+          // Update header avatar if this chat is currently open
+          const headerImg = document.getElementById(`chatHeaderAvatar-${otherUid}`);
+          if (headerImg) headerImg.src = freshAvatar;
+        }
+      }).catch(() => {});
+    });
   }
 }
 
@@ -4196,7 +4216,7 @@ function selectChat(userId, userName, userAvatar) {
     <div class="chat-main-header">
       <div class="chat-main-header-info">
         <button class="chat-back-btn" onclick="goBackToSidebar()">←</button>
-        <img class="chat-list-item-avatar" src="${userAvatar}" onclick="openUserProfile('${userId}', '${userName.replace(/'/g, "\\'")}', '${userAvatar.replace(/'/g, "\\'")}')" style="cursor:pointer" onerror="this.src='${PREDEFINED_AVATARS[0].url}'" />
+        <img class="chat-list-item-avatar" id="chatHeaderAvatar-${userId}" src="${userAvatar}" onclick="openUserProfile('${userId}', '${userName.replace(/'/g, "\\'")}', '${userAvatar.replace(/'/g, "\\'")}')" style="cursor:pointer" onerror="this.src='${PREDEFINED_AVATARS[0].url}'" />
         <div style="cursor:pointer" onclick="openUserProfile('${userId}', '${userName.replace(/'/g, "\\'")}', '${userAvatar.replace(/'/g, "\\'")}')">
           <div style="font-weight:800; font-size:15px; color:#fff;">${userName}</div>
           <div style="font-size:11px; color:rgba(255, 255, 255, 0.4);">Click to view profile</div>
@@ -4215,6 +4235,17 @@ function selectChat(userId, userName, userAvatar) {
       </button>
     </div>
   `;
+
+  // Live-fetch the latest avatar for the chat header
+  db.collection("users").doc(userId).get().then(doc => {
+    if (doc.exists) {
+      const freshAvatar = doc.data().avatarUrl || PREDEFINED_AVATARS[0].url;
+      window.activeChatAvatarCache = window.activeChatAvatarCache || {};
+      window.activeChatAvatarCache[userId] = freshAvatar;
+      const headerImg = document.getElementById(`chatHeaderAvatar-${userId}`);
+      if (headerImg) headerImg.src = freshAvatar;
+    }
+  }).catch(() => {});
 
   // Focus message input
   const input = document.getElementById("chatInputMessage");
