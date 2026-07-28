@@ -3098,27 +3098,29 @@ async function watch(animeId, epIndex, selectedLang = ""){
   }
 
   url = url.trim();
+
+  // Extract src attribute if full <iframe> code was pasted
+  const iframeSrcMatch = url.match(/src=["']([^"']+)["']/i);
+  if (iframeSrcMatch) {
+    url = iframeSrcMatch[1];
+  }
+
   let player = "";
   const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]+)/);
-  if(yt){
-    player = `<iframe src="https://www.youtube.com/embed/${yt[1]}?autoplay=1" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+  if (yt) {
+    player = `<iframe src="https://www.youtube.com/embed/${yt[1]}?autoplay=1" allow="autoplay; fullscreen" allowfullscreen frameborder="0"></iframe>`;
   }
-  else if(url.includes("drive.google.com")){
+  else if (url.includes("drive.google.com")) {
     const m = url.match(/\/d\/([^/]+)/);
     const id = m ? m[1] : "";
-    player = `<iframe src="https://drive.google.com/file/d/${id}/preview" allow="autoplay" allowfullscreen></iframe>`;
+    player = `<iframe src="https://drive.google.com/file/d/${id}/preview" allow="autoplay" allowfullscreen frameborder="0"></iframe>`;
   }
-  else if(/\.(mp4|webm|ogg|m3u8)(\?|$)/i.test(url)){
+  else if (/\.(mp4|webm|ogg|m3u8)(\?|$)/i.test(url)) {
     player = `<video src="${url}" controls autoplay></video>`;
   }
   else {
-    let embedUrl = url;
-    if (VIDEO_PROXY) {
-      // Strip protocol and route through path-based proxy
-      const stripped = url.replace(/^https?:\/\//, '');
-      embedUrl = `${VIDEO_PROXY}/proxy/${stripped}`;
-    }
-    player = `<iframe src="${embedUrl}" referrerpolicy="no-referrer" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+    // Direct embed for Abyss Player and all video embed hosts
+    player = `<iframe src="${url}" allow="autoplay; fullscreen" allowfullscreen frameborder="0" scrolling="0"></iframe>`;
   }
 
   let episodesHtml = `
@@ -4938,7 +4940,14 @@ function saveCurrentLanguageRowsToState() {
   rows.forEach(r => {
     const inputs = r.querySelectorAll("input");
     const num = parseInt(inputs[0].value) || 0;
-    const val = inputs[1].value.trim();
+    let val = inputs[1].value.trim();
+
+    // Clean iframe code to store direct URL
+    const iframeSrcMatch = val.match(/src=["']([^"']+)["']/i);
+    if (iframeSrcMatch) {
+      val = iframeSrcMatch[1];
+    }
+
     if (num > 0) {
       let existing = currentEditingEpisodes.find(x => x.number === num);
       if (!existing) {
@@ -5029,10 +5038,23 @@ function addEpRow(ep={}){
 
 function bulkAddEpisodes() {
   const ta = document.getElementById("bulk-urls");
-  // Simple split on whitespace and commas - handles actual newlines, spaces, tabs, commas
-  const rawSplit = ta.value.split(/[\s,]+/);
-  // Filter for valid URLs only
-  const urls = rawSplit.map(s => s.trim()).filter(s => s.startsWith('http'));
+  const rawText = ta.value;
+  
+  // Extract all src="http..." or standalone http... URLs
+  const urls = [];
+  const iframeRegex = /src=["'](https?:\/\/[^"']+)["']/gi;
+  let match;
+  while ((match = iframeRegex.exec(rawText)) !== null) {
+    urls.push(match[1]);
+  }
+  
+  if (urls.length === 0) {
+    const rawSplit = rawText.split(/[\s,]+/);
+    rawSplit.forEach(s => {
+      const trimmed = s.trim();
+      if (trimmed.startsWith('http')) urls.push(trimmed);
+    });
+  }
   
   const list = document.getElementById("ep-list");
   const rows = list.querySelectorAll(".ep-row");
